@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'feed_detail.dart';
 import 'keys/pass.dart';
 import 'models/news_feed.dart';
@@ -13,46 +16,9 @@ class NewsFeed extends StatefulWidget {
 }
 
 class _NewsFeedState extends State<NewsFeed> {
-  final List<Map<String, dynamic>> categories = [
-    {
-      'displayText': 'Business',
-      'apiText': 'business',
-      'color': Color(0xFF800000),
-    },
-    {
-      'displayText': 'Entertainment',
-      'apiText': 'entertainment',
-      'color': Color(0xFF808000),
-    },
-    {
-      'displayText': 'General',
-      'apiText': 'general',
-      'color': Color(0xFF008080),
-    },
-    {
-      'displayText': 'Health',
-      'apiText': 'health',
-      'color': Color(0xFF800080),
-    },
-    {
-      'displayText': 'Science',
-      'apiText': 'science',
-      'color': Color(0xFF000080),
-    },
-    {
-      'displayText': 'Sports',
-      'apiText': 'sports',
-      'color': Color(0xFFCD5C5C),
-    },
-    {
-      'displayText': 'Technology',
-      'apiText': 'technology',
-      'color': Color(0xFFFA8072),
-    },
-  ];
-
   int _selectedIndex;
   bool isFilteredCategory = false;
+  dynamic activeCountry;
 
   ScrollController _scrollController = new ScrollController();
 
@@ -65,9 +31,48 @@ class _NewsFeedState extends State<NewsFeed> {
 
   final dio = new Dio();
 
+  @override
+  void initState() {
+    getChosenCountry();
+    this.getNewsData(isInitialLoad: true, shouldGetNextPage: false);
+    super.initState();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        if (newsList.length < newsCount) {
+          this.getNewsData(isInitialLoad: false, shouldGetNextPage: true);
+        } else {}
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<dynamic> getChosenCountry() async {
+//    SharedPreferences prefs = await SharedPreferences.getInstance();
+//    if (true) {
+//      await setChosenCountry(country: countries.first);
+//    }
+//    return prefs.getString('country');
+    activeCountry = countries.first;
+    return;
+  }
+
+  Future<void> setChosenCountry({dynamic country}) async {
+//    SharedPreferences prefs = await SharedPreferences.getInstance();
+//    await prefs.setString('country', country);
+    activeCountry = country;
+    getNewsData(isInitialLoad: true, shouldGetNextPage: false);
+  }
+
   String _formatApiUrl() {
     return url +
-        'country=in&pageSize=20' +
+        'country=${activeCountry['apiText']}' +
+        '&pageSize=20' +
         '${isFilteredCategory ? 'category=${categories[_selectedIndex]['apiText']}' : ''}' +
         '&page=$activePageNo' +
         '&apiKey=' +
@@ -81,12 +86,8 @@ class _NewsFeedState extends State<NewsFeed> {
       isNextPageLoading = shouldGetNextPage;
       isLoading = isInitialLoad;
       //increment page no if getting next page
-      activePageNo = shouldGetNextPage ? activePageNo+1 : 1;
+      activePageNo = shouldGetNextPage ? activePageNo + 1 : 1;
     });
-
-    print(
-        '---------->>> making next page api call count -> $newsCount list count ${newsList.length}');
-//    return;
     try {
       print('---------->>> making api call url -> ${_formatApiUrl()}');
 
@@ -94,13 +95,8 @@ class _NewsFeedState extends State<NewsFeed> {
       final ApiResponse apiResponseObj =
           serializers.deserializeWith(ApiResponse.serializer, response.data);
 
-      for(var object in apiResponseObj.articles){
-        print('obj - ${object.title}');
-      }
-
       if (isInitialLoad) {
         newsList.clear();
-        print('-------reset array');
       }
 
       setState(() {
@@ -112,28 +108,6 @@ class _NewsFeedState extends State<NewsFeed> {
     } catch (e) {
       print('error api call ${e.toString()}');
     }
-  }
-
-  @override
-  void initState() {
-    this.getNewsData(isInitialLoad: true, shouldGetNextPage: false);
-    super.initState();
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels ==
-          _scrollController.position.maxScrollExtent) {
-        if (newsList.length < newsCount) {
-          this.getNewsData(isInitialLoad: false, shouldGetNextPage: true);
-        } else {
-          print('no further data');
-        }
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
   }
 
   Widget _buildProgressIndicator() {
@@ -152,13 +126,54 @@ class _NewsFeedState extends State<NewsFeed> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('News App'),
-        centerTitle: true,
+        title: Text('EECO'),
         actions: <Widget>[
-          new IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+          Container(
+            alignment: Alignment.center,
+            child: new DropdownButton<dynamic>(
+              value: activeCountry,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontStyle: FontStyle.italic,
+                  fontSize: 13.0),
+              selectedItemBuilder: (BuildContext context) {
+                return countries.map((dynamic item) {
+                  return Text(
+                    item['displayText'],
+                  );
+                }).toList();
+              },
+              items: countries.map(
+                (dynamic country) {
+                  return new DropdownMenuItem<dynamic>(
+                    value: country,
+                    child: new Text(
+                      country['displayText'],
+                      style: TextStyle(
+                        color: activeCountry == country
+                            ? Colors.blue
+                            : Colors.black,
+                      ),
+                    ),
+                  );
+                },
+              ).toList(),
+              onChanged: (dynamic chosenCountry) {
+                setState(() {
+                  activeCountry = chosenCountry;
+                });
+                setChosenCountry(country: chosenCountry);
+              },
+              underline: new Container(),
+              iconEnabledColor: Colors.white,
+            ),
+          ),
+          new IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {},
+          ),
         ],
       ),
-      drawer: new Drawer(),
       body: new Container(
         child: new Column(
           children: <Widget>[
@@ -221,7 +236,7 @@ class _NewsFeedState extends State<NewsFeed> {
                               );
                             },
                             child: new Card(
-                              elevation: 1.0,
+                              elevation: 3.0,
                               margin: const EdgeInsets.symmetric(
                                   vertical: 5.0, horizontal: 20.0),
                               child: IntrinsicHeight(
@@ -233,7 +248,7 @@ class _NewsFeedState extends State<NewsFeed> {
                                       flex: 1,
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.all(
-                                          Radius.circular(10.0),
+                                          Radius.circular(4.0),
                                         ),
                                         child: Hero(
                                           tag: 'detail-$index',
@@ -249,11 +264,15 @@ class _NewsFeedState extends State<NewsFeed> {
                                     new Expanded(
                                       flex: 3,
                                       child: Container(
-                                        padding: const EdgeInsets.all(10.0),
+                                        padding: const EdgeInsets.only(
+                                          top: 10.0,
+                                          left: 10.0,
+                                          right: 10.0,
+                                        ),
                                         child: Column(
                                           children: <Widget>[
                                             new Text(
-                                              '${index+1} = ${newsList[index].title}',
+                                              '${newsList[index].title}',
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                               ),
@@ -266,7 +285,8 @@ class _NewsFeedState extends State<NewsFeed> {
                                             new Text(
                                               '${newsList[index].description}',
                                               style: TextStyle(
-                                                fontWeight: FontWeight.normal,
+                                                fontWeight: FontWeight.w200,
+                                                fontSize: 12.0,
                                               ),
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
@@ -275,12 +295,39 @@ class _NewsFeedState extends State<NewsFeed> {
                                               mainAxisAlignment:
                                                   MainAxisAlignment.end,
                                               children: <Widget>[
-                                                IconButton(
-                                                  icon: const Icon(Icons.share),
-                                                  onPressed: () {},
+                                                new Expanded(
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment.end,
+                                                    children: <Widget>[
+                                                      new Icon(
+                                                        Icons.timer,
+                                                        color: Colors.black45,
+                                                        size: 15.0,
+                                                      ),
+                                                      new Text(
+                                                        getTimeString(
+                                                          date: newsList[index]
+                                                              .publishedAt,
+                                                        ),
+                                                        style: TextStyle(
+                                                            fontSize: 10.0),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
-                                                new Icon(Icons.timer),
-                                                new Text('10.0 am'),
+                                                IconButton(
+                                                  icon: const Icon(
+                                                    Icons.share,
+                                                    color: Colors.blue,
+                                                    size: 18.0,
+                                                  ),
+                                                  onPressed: () {
+                                                    shareContent(
+                                                      url: newsList[index].url,
+                                                    );
+                                                  },
+                                                ),
                                               ],
                                             )
                                           ],

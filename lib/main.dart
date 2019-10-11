@@ -9,6 +9,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        // Set Roboto as the default app font.
+          fontFamily: 'Roboto',
       ),
       home: NewsFeed(),
       debugShowCheckedModeBanner: false,

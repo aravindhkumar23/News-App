@@ -9,6 +9,8 @@ abstract class News implements Built<News, NewsBuilder> {
 
   News._();
 
+  Source get source;
+
   @nullable
   String get author;
 
@@ -33,6 +35,21 @@ abstract class News implements Built<News, NewsBuilder> {
   static Serializer<News> get serializer => _$newsSerializer;
 }
 
+
+abstract class Source implements Built<Source, SourceBuilder>{
+  factory Source([SourceBuilder updates(SourceBuilder builder)]) = _$Source;
+
+  Source._();
+
+  @nullable
+  String get id;
+
+  @nullable
+  String get name;
+
+  static Serializer<Source> get serializer => _$sourceSerializer;
+
+}
 /*
         {
             "source": {
