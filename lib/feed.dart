@@ -1,9 +1,7 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'feed_detail.dart';
+import 'feed_tile.dart';
 import 'keys/pass.dart';
 import 'models/news_feed.dart';
 import 'models/response.dart';
@@ -16,25 +14,23 @@ class NewsFeed extends StatefulWidget {
 }
 
 class _NewsFeedState extends State<NewsFeed> {
+  ScrollController _scrollController = new ScrollController();
+  final GlobalKey scaffoldKey = GlobalKey<ScaffoldState>();
+  final dio = new Dio();
+
+  //category selected index
   int _selectedIndex;
   bool isFilteredCategory = false;
-  dynamic activeCountry;
-
-  ScrollController _scrollController = new ScrollController();
-
   bool isLoading = true;
   bool isNextPageLoading = false;
-
   List<News> newsList = [];
   int newsCount = 0;
   int activePageNo = 1;
-
-  final dio = new Dio();
+  dynamic activeCountry;
 
   @override
   void initState() {
     getChosenCountry();
-    this.getNewsData(isInitialLoad: true, shouldGetNextPage: false);
     super.initState();
     _scrollController.addListener(() {
       if (_scrollController.position.pixels ==
@@ -52,19 +48,25 @@ class _NewsFeedState extends State<NewsFeed> {
     super.dispose();
   }
 
-  Future<dynamic> getChosenCountry() async {
-//    SharedPreferences prefs = await SharedPreferences.getInstance();
-//    if (true) {
-//      await setChosenCountry(country: countries.first);
-//    }
-//    return prefs.getString('country');
-    activeCountry = countries.first;
-    return;
+  Future<void> getChosenCountry() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String localValue = prefs.getString('country');
+    //if local value is null pick first
+    if (localValue == null) {
+      await setChosenCountry(country: countries.first);
+      activeCountry = countries.first;
+    } else {
+      //else choose value from local storage.
+      activeCountry = countries
+          .where((dynamic country) => country['apiText'] == localValue)
+          .first;
+    }
+    this.getNewsData(isInitialLoad: true, shouldGetNextPage: false);
   }
 
   Future<void> setChosenCountry({dynamic country}) async {
-//    SharedPreferences prefs = await SharedPreferences.getInstance();
-//    await prefs.setString('country', country);
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('country', country['apiText']);
     activeCountry = country;
     getNewsData(isInitialLoad: true, shouldGetNextPage: false);
   }
@@ -73,13 +75,13 @@ class _NewsFeedState extends State<NewsFeed> {
     return url +
         'country=${activeCountry['apiText']}' +
         '&pageSize=20' +
-        '${isFilteredCategory ? 'category=${categories[_selectedIndex]['apiText']}' : ''}' +
+        '${isFilteredCategory ? '&category=${categories[_selectedIndex]['apiText']}' : ''}' +
         '&page=$activePageNo' +
         '&apiKey=' +
         apiKey;
   }
 
-  //initial load used at 1. initstate 2.category choose or reset category
+  //initial load used at 1. init state 2.category choose or reset category
   void getNewsData(
       {bool isInitialLoad = false, bool shouldGetNextPage = false}) async {
     setState(() {
@@ -89,16 +91,15 @@ class _NewsFeedState extends State<NewsFeed> {
       activePageNo = shouldGetNextPage ? activePageNo + 1 : 1;
     });
     try {
-      print('---------->>> making api call url -> ${_formatApiUrl()}');
-
       final response = await dio.get(_formatApiUrl());
       final ApiResponse apiResponseObj =
           serializers.deserializeWith(ApiResponse.serializer, response.data);
-
+      if (apiResponseObj.code != null) {
+        showToast(msg: apiResponseObj.message, scaffoldKey: scaffoldKey);
+      }
       if (isInitialLoad) {
         newsList.clear();
       }
-
       setState(() {
         isLoading = false;
         isNextPageLoading = false;
@@ -107,6 +108,11 @@ class _NewsFeedState extends State<NewsFeed> {
       });
     } catch (e) {
       print('error api call ${e.toString()}');
+      showToast(msg: 'Something went wrong.', scaffoldKey: scaffoldKey);
+      setState(() {
+        isLoading = false;
+        isNextPageLoading = false;
+      });
     }
   }
 
@@ -125,6 +131,7 @@ class _NewsFeedState extends State<NewsFeed> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: scaffoldKey,
       appBar: AppBar(
         title: Text('EECO'),
         actions: <Widget>[
@@ -170,7 +177,9 @@ class _NewsFeedState extends State<NewsFeed> {
           ),
           new IconButton(
             icon: const Icon(Icons.search),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).pushNamed('/search');
+            },
           ),
         ],
       ),
@@ -224,120 +233,9 @@ class _NewsFeedState extends State<NewsFeed> {
                         if (index == newsList.length) {
                           return _buildProgressIndicator();
                         } else {
-                          return InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => FeedDetail(
-                                          news: newsList[index],
-                                          index: index,
-                                        )),
-                              );
-                            },
-                            child: new Card(
-                              elevation: 3.0,
-                              margin: const EdgeInsets.symmetric(
-                                  vertical: 5.0, horizontal: 20.0),
-                              child: IntrinsicHeight(
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: <Widget>[
-                                    new Expanded(
-                                      flex: 1,
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.all(
-                                          Radius.circular(4.0),
-                                        ),
-                                        child: Hero(
-                                          tag: 'detail-$index',
-                                          child: Image.network(
-                                            getImageUrl(
-                                              url: newsList[index]?.urlToImage,
-                                            ),
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    new Expanded(
-                                      flex: 3,
-                                      child: Container(
-                                        padding: const EdgeInsets.only(
-                                          top: 10.0,
-                                          left: 10.0,
-                                          right: 10.0,
-                                        ),
-                                        child: Column(
-                                          children: <Widget>[
-                                            new Text(
-                                              '${newsList[index].title}',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            new SizedBox(
-                                              height: 4.0,
-                                            ),
-                                            new Text(
-                                              '${newsList[index].description}',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w200,
-                                                fontSize: 12.0,
-                                              ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            new Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.end,
-                                              children: <Widget>[
-                                                new Expanded(
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment.end,
-                                                    children: <Widget>[
-                                                      new Icon(
-                                                        Icons.timer,
-                                                        color: Colors.black45,
-                                                        size: 15.0,
-                                                      ),
-                                                      new Text(
-                                                        getTimeString(
-                                                          date: newsList[index]
-                                                              .publishedAt,
-                                                        ),
-                                                        style: TextStyle(
-                                                            fontSize: 10.0),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                IconButton(
-                                                  icon: const Icon(
-                                                    Icons.share,
-                                                    color: Colors.blue,
-                                                    size: 18.0,
-                                                  ),
-                                                  onPressed: () {
-                                                    shareContent(
-                                                      url: newsList[index].url,
-                                                    );
-                                                  },
-                                                ),
-                                              ],
-                                            )
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          return FeedTile(
+                            index: index,
+                            news: newsList[index],
                           );
                         }
                       }),

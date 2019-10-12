@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:share/share.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -76,4 +77,13 @@ void launchURL({String url}) async {
 
 void shareContent({String url}) {
   Share.share('Check out  $url');
+}
+
+
+void showToast({String msg,GlobalKey<ScaffoldState> scaffoldKey}){
+  scaffoldKey.currentState.showSnackBar(
+      new SnackBar(
+          content: new Text(msg)
+      )
+  );
 }

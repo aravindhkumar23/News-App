@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:news_app/feed.dart';
 
+import 'search_page.dart';
+
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
@@ -12,8 +14,13 @@ class MyApp extends StatelessWidget {
         // Set Roboto as the default app font.
           fontFamily: 'Roboto',
       ),
-      home: NewsFeed(),
+//      home: NewsFeed(),
       debugShowCheckedModeBanner: false,
+      initialRoute: '/',
+      routes: {
+        '/': (context) => NewsFeed(),
+        '/search': (context) => SearchNews(),
+      },
     );
   }
 }
