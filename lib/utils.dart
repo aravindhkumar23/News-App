@@ -51,8 +51,16 @@ final List<Map<String, dynamic>> countries = [
     'apiText': 'ca',
   },
   {
+    'displayText': 'China',
+    'apiText': 'cn',
+  },
+  {
     'displayText': 'India',
     'apiText': 'in',
+  },
+  {
+    'displayText': 'US',
+    'apiText': 'us',
   },
 ];
 
@@ -79,11 +87,6 @@ void shareContent({String url}) {
   Share.share('Check out  $url');
 }
 
-
-void showToast({String msg,GlobalKey<ScaffoldState> scaffoldKey}){
-  scaffoldKey.currentState.showSnackBar(
-      new SnackBar(
-          content: new Text(msg)
-      )
-  );
+void showToast({String msg, GlobalKey<ScaffoldState> scaffoldKey}) {
+  scaffoldKey.currentState.showSnackBar(new SnackBar(content: new Text(msg)));
 }

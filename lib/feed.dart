@@ -227,20 +227,24 @@ class _NewsFeedState extends State<NewsFeed> {
                   ? new Center(
                       child: CircularProgressIndicator(),
                     )
-                  : new ListView.builder(
-                      controller: _scrollController,
-                      itemBuilder: ((BuildContext context, int index) {
-                        if (index == newsList.length) {
-                          return _buildProgressIndicator();
-                        } else {
-                          return FeedTile(
-                            index: index,
-                            news: newsList[index],
-                          );
-                        }
-                      }),
-                      itemCount: newsList.length,
-                    ),
+                  : newsList.isEmpty
+                      ? new Center(
+                          child: Text('No recent headlines found.'),
+                        )
+                      : new ListView.builder(
+                          controller: _scrollController,
+                          itemBuilder: ((BuildContext context, int index) {
+                            if (index == newsList.length) {
+                              return _buildProgressIndicator();
+                            } else {
+                              return FeedTile(
+                                index: index,
+                                news: newsList[index],
+                              );
+                            }
+                          }),
+                          itemCount: newsList.length,
+                        ),
             )
           ],
         ),
